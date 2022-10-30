@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "so_studio.h": "c",
+        "stdio.h": "c",
+        "errorcheck.h": "c"
+    }
+}

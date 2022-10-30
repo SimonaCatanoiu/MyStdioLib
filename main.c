@@ -6,7 +6,6 @@
 #include "ErrorCheck.h"
 #include "utils.h"
 
-//FOPEN PENTRU LINUX
 SO_FILE *so_fopen(const char *pathname, const char *mode)
 {
     //verifica parametrii functiei
@@ -49,7 +48,6 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
     return new_file;
 }
 
-//FCLOSE PENTRU LINUX
 int so_fclose(SO_FILE *stream)
 {
     //Inchide ​fisierul primit ca parametru si

@@ -1,7 +1,7 @@
 #ifndef SO_ERRORCHECK_H
 #define SO_ERRORCHECK_H
 
-#include "so_studio.h"
+#include "so_stdio.h"
 
 #define THROW_NULL -1
 #define THROW_ERR -2

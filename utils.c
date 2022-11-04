@@ -76,3 +76,21 @@ OPENMODE get_open_mode(const char* mode)
     }
     return unset;
 }
+
+int is_read_flag_on(OPENMODE mode)
+{
+    if(mode==r || mode==rplus || mode==aplus||mode==wplus)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+int is_write_flag_on(OPENMODE mode)
+{
+    if(mode==w || mode==wplus || mode==aplus||mode==a||mode==rplus)
+    {
+        return 1;
+    }
+    return 0;
+}

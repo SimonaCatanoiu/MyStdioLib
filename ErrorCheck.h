@@ -23,4 +23,6 @@ int check_error_so_feof(SO_FILE* stream);
 
 int check_error_so_ferror(SO_FILE* stream);
 
+int check_error_so_fread_fwrite(SO_FILE *stream,size_t size, size_t nmemb);
+
 #endif

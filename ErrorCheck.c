@@ -100,3 +100,19 @@ int check_error_so_ferror(SO_FILE* stream)
     }
     return MOVEON;
 }
+
+int check_error_so_fread_fwrite(SO_FILE *stream,size_t size, size_t nmemb)
+{
+    if(stream==NULL)
+    {
+        return THROW_SO_EOF;
+    }
+    if(size<=0)
+    {
+        return THROW_SO_EOF;
+    }
+    if(nmemb<=0)
+    {
+        return THROW_SO_EOF;
+    }
+}

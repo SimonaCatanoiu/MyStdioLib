@@ -17,4 +17,8 @@ int get_filemode(const char* mode);
 
 OPENMODE get_open_mode(const char* mode);
 
+int is_read_flag_on(OPENMODE mode);
+
+int is_write_flag_on(OPENMODE mode);
+
 #endif

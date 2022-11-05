@@ -3,9 +3,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/wait.h>
 #include "so_stdio.h"
 #include "ErrorCheck.h"
 #include "utils.h"
+
+#define READ_END 0
+#define WRITE_END 1
 
 SO_FILE *so_fopen(const char *pathname, const char *mode)
 {
@@ -33,6 +37,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
     new_file->bool_is_eof = 0;
     new_file->bool_is_error = 0;
     memset(new_file->buffer, 0, BUFFER_SIZE); // initializare buffer cu valorile pe 0
+    new_file->pid = -1;
 
     // deschiderea fisierului si intializare handle
     if (new_file->filemode == -1)
@@ -60,12 +65,11 @@ int so_fclose(SO_FILE *stream)
     // Elibereaza memoria folosita de structura ​SO_FILE​.
     // Intoarce 0 in caz de succes sau ​SO_EOF​ in caz de eroare.
 
-
-    //Inainte de a inchide fisierul, trebuie sa scriu ce am in buffer daca ultima operatie a fost de scriere
-    if(stream->last_operation==write_op)
+    // Inainte de a inchide fisierul, trebuie sa scriu ce am in buffer daca ultima operatie a fost de scriere
+    if (stream->last_operation == write_op)
     {
         int ret_value = so_fflush(stream);
-        if(ret_value<0)
+        if (ret_value < 0)
         {
             return SO_EOF;
         }
@@ -123,7 +127,7 @@ int so_fflush(SO_FILE *stream)
         written_Bytes = written_Bytes + written_Bytes2;
     }
 
-    //printf("FFlush trebuia sa scrie %d caractere. FFlush a scris %d caractere\n", stream->buffer_length, written_Bytes);
+    // printf("FFlush trebuia sa scrie %d caractere. FFlush a scris %d caractere\n", stream->buffer_length, written_Bytes);
 
     // dupa ce a scris in fisier, punem valorile din buffer din nou pe 0 si mutam offset-ul buffer-ului.Ultima operatie se va muta pe fflush_op
     // invalidarea bufferului
@@ -168,8 +172,8 @@ int so_fseek(SO_FILE *stream, long offset, int whence)
         stream->bool_is_error = 1;
         return -1;
     }
-    // retine pozitia cursorului in fisier si ultima operatie
-    stream->bool_is_eof=0;
+    // retine pozitia cursorului in fisier
+    stream->bool_is_eof = 0;
     stream->file_offset = fseek_return;
     return 0;
 }
@@ -243,13 +247,12 @@ int so_fgetc(SO_FILE *stream)
         // verific daca a citit cu succes si daca a ajuns la finalul fisierului
         if (bytesReaded <= 0)
         {
-            if(bytesReaded==0)
+            if (bytesReaded == 0)
             {
                 stream->bool_is_eof = 1;
             }
             else
             {
-                printf("%s",strerror(errno));
                 stream->bool_is_error = 1;
             }
             return SO_EOF;
@@ -309,10 +312,10 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
         return SO_EOF;
     }
 
-    //verifica daca se poate citi din fisier
-    if(is_read_flag_on(stream->openmode)==0)
-    {   
-        stream->bool_is_error=1;
+    // verifica daca se poate citi din fisier
+    if (is_read_flag_on(stream->openmode) == 0)
+    {
+        stream->bool_is_error = 1;
         return SO_EOF;
     }
 
@@ -329,7 +332,7 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
             }
             else
             { // daca a dat eroare la fgetc, intoarce SO_EOF
-                if (ret_char < 0&& stream->bool_is_error==1)
+                if (ret_char < 0 && stream->bool_is_error == 1)
                 {
                     return SO_EOF;
                 }
@@ -355,10 +358,10 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
         return SO_EOF;
     }
 
-    //verifica daca poate scrie in fisier
-    if(is_write_flag_on(stream->openmode)==0)
+    // verifica daca poate scrie in fisier
+    if (is_write_flag_on(stream->openmode) == 0)
     {
-        stream->bool_is_error=1;
+        stream->bool_is_error = 1;
         return SO_EOF;
     }
 
@@ -369,10 +372,10 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
             // pentru fiecare byte din ptr, apelam so_fputc
             int index = i * size + j;
             int char_to_put = *((int *)(ptr + index));
-            int ret_value = so_fputc(char_to_put,stream);
+            int ret_value = so_fputc(char_to_put, stream);
 
             // verificam daca a intampinat vreo eroare
-            if (ret_value < 0 && stream->bool_is_error==1)
+            if (ret_value < 0 && stream->bool_is_error == 1)
             {
                 return SO_EOF;
             }
@@ -383,80 +386,169 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
     return total_elements_written;
 }
 
+SO_FILE *so_popen(const char *command, const char *type)
+{
+    // verifica daca type e r sau w
+    if ((strcmp(type, "r") != 0) && (strcmp(type, "w") != 0))
+    {
+        return NULL;
+    }
+
+    // cei doi descriptori ale capetelor pipe-ului
+    int pipe_fd[2];
+    int file_descriptor;
+    int ret = pipe(pipe_fd);
+    if (ret < 0)
+    {
+        // eroare la crearea pipe-ului
+        return NULL;
+    }
+    // creare proces copil
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        // eroare la crearea procesului. Inchid capetele pipe-ului
+        close(pipe_fd[WRITE_END]);
+        close(pipe_fd[READ_END]);
+        return NULL;
+    }
+    if (pid == 0) // COPIL
+    {
+        // DESCHIDE CAPATUL CORESPUNZATOR COPILULUI
+        if (strcmp(type, "r") == 0)
+        {
+            // inchid capatul nefolosit
+            close(pipe_fd[READ_END]);
+            // COPILUL SCRIE IN PIPE
+            // Iesirea procesului copil trebuie sa fie fisierul de write din pipe
+            if (pipe_fd[WRITE_END] != STDOUT_FILENO)
+            {
+                int ret_val = dup2(pipe_fd[WRITE_END], STDOUT_FILENO);
+                if (ret_val == -1)
+                {
+                    close(pipe_fd[WRITE_END]);
+                    return NULL;
+                }
+            }
+            close(pipe_fd[WRITE_END]);
+        }
+        else
+        {
+            // inchid capatul nefolosit
+            close(pipe_fd[WRITE_END]);
+            // COPILUL CITESTE DIN PIPE
+            // Intrarea procesului copil trebuie sa fie fisierul de read din pipe
+            if (pipe_fd[READ_END] != STDIN_FILENO)
+            {
+                int ret_val = dup2(pipe_fd[READ_END], STDIN_FILENO);
+                if (ret_val == -1)
+                {
+                    close(pipe_fd[READ_END]);
+                    return NULL;
+                }
+            }
+            close(pipe_fd[READ_END]);
+        }
+
+        // EXECUTA COMANDA DATA DE COMMAND
+        char *argproc[4] = {"sh", "-c", NULL, NULL};
+        argproc[2] = (char *)command;
+        execvp("sh", argproc);
+        return NULL;
+    }
+    if (pid > 0) // PARINTE
+    {
+        if (strcmp(type, "r") == 0)
+        {
+            // PARINTELE VA FOLOSI CAPATUL DE CITIRE
+            // inchidem capatul de sciere
+            close(pipe_fd[WRITE_END]);
+            file_descriptor = pipe_fd[READ_END];
+        }
+        else
+        {
+            // PARINTELE VA FOLOSI CAPATUL DE SCRIERE
+            // inchidem capatul de citire
+            close(pipe_fd[READ_END]);
+            file_descriptor = pipe_fd[WRITE_END];
+        }
+    }
+    // initializare structura SO_FILE
+
+    // aloca fisier so_file
+    SO_FILE *file = (SO_FILE *)malloc(sizeof(SO_FILE));
+    // verifica alocarea
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
+    // initializeaza structura SO_FILE
+    file->flags = get_flags(type);
+    file->filemode = get_filemode(type);
+    file->buffer_offset = 0;
+    file->buffer_length = 0;
+    file->file_offset = 0;
+    file->last_operation = none_op;
+    file->openmode = get_open_mode(type);
+    file->bool_is_eof = 0;
+    file->bool_is_error = 0;
+    memset(file->buffer, 0, BUFFER_SIZE);
+    file->pid = pid;
+    file->handle = file_descriptor;
+
+    return file;
+}
+
+int so_pclose(SO_FILE *stream)
+{
+    if (stream->pid == -1)
+    {
+        return -1;
+    }
+    int waited_pid = stream->pid;
+    int wstatus;
+
+    int ret_fclose = so_fclose(stream);
+    if (ret_fclose < 0)
+    {
+        return -1;
+    }
+
+    int ret_value = waitpid(waited_pid, &wstatus, 0);
+    if (ret_value == -1)
+    {
+        return -1;
+    }
+    return wstatus;
+}
+
 int main()
 {
-
     /*
-   printf("Descriptorul asociat fisierului este:%d\n", so_fileno(file));
-
-   strcpy(file->buffer, "Acesta este textul de afisat\n");
-   file->buffer_length = strlen(file->buffer);
-   file->last_operation = write_op;
-   so_fflush(file);
-   strcpy(file->buffer, "Text2\n");
-   file->buffer_length = strlen(file->buffer);
-   file->last_operation = write_op;
-   so_fflush(file);
-*/
-    /*
-        so_fseek(file, 0, SEEK_SET);
-        printf("Poz cursor:%ld\n",so_ftell(file));
-        printf("%c", so_fgetc(file));
-        printf("Poz cursor:%ld\n",so_ftell(file));
-
-        so_fseek(file,file->file_offset,SEEK_SET);
-        printf("Poz cursor:%ld\n",so_ftell(file));
-        for(int i=0;i<5;i++)
-        {
-            so_fputc('y',file);
-        }
-        */
-    /*
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    so_fflush(file);
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    printf("%c", so_fgetc(file));
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    printf("%c", so_fgetc(file));
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    */
-    /*
-     so_fflush(file);
-     char buffer[2];
-     so_fread(buffer, 1, 3, file);
- */
     SO_FILE *file = so_fopen("maine", "w+");
-    char buffer[40] = "1234567sad[;,.cxzc(*#((@Q)#8";
+    char buffer[70] = "Acesta este asdasd asd as das d xc v cxv xc vtextul dasdasdt";
     int r = so_fwrite(buffer, 1, strlen(buffer), file);
-    printf("%d\n",r);
-    printf("Poz cursor:%ld\n",so_ftell(file));
+    printf("%d\n", r);
+    printf("Poz cursor:%ld\n", so_ftell(file));
     so_fflush(file);
-    so_fseek(file,-10,SEEK_CUR);
+    so_fseek(file, -10, SEEK_CUR);
 
-    printf("%c\n",so_fgetc(file));
-    /*
+    printf("%c\n", so_fgetc(file));
 
-    so_fputc((int)'y',file);
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    so_fflush(file);
-    printf("%d\n",so_feof(file));
-    printf("%c\n",so_fgetc(file));
-    printf("%d\n",so_feof(file));
-    printf("Poz cursor:%ld\n",so_ftell(file));
-    so_fseek(file,0,SEEK_SET);
-    printf("%d\n",so_feof(file));
-    printf("%c",so_fgetc(file));
-
-*/
-
-
-    /*
-    char buffer2[5];
-    int readed = so_fread(buffer2,1,4,file);
-    buffer2[4]='\0';
-    printf("%s",buffer2);
-    */
     so_fclose(file);
+    */
+
+    SO_FILE *f;
+    char line[11]; 
+    f = so_popen("ls -l", "r");
+    int total = 0;
+	while(so_feof(f)==0) {
+		size_t ret = so_fread(&line[total], 1, 10, f);
+        line[10]='\0';
+        printf("%s",line);
+	}
+    so_pclose(f);
 
     return 0;
 }

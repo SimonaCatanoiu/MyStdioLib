@@ -28,7 +28,7 @@ int get_flags(const char *mode)
     //deschide pentru citire si scriere. Daca nu exista,creeaza. Daca exista, truncheaza la 0
     if (strcmp(mode, "w+") == 0)
     {
-        flags=O_WRONLY|O_CREAT|O_TRUNC;
+        flags=O_RDWR|O_CREAT|O_TRUNC;
     }
     //deschide in append + read. Daca nu exista,creeaza
     if (strcmp(mode, "a+") == 0)

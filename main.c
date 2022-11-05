@@ -433,7 +433,7 @@ int main()
     so_fflush(file);
     so_fseek(file,-10,SEEK_CUR);
 
-    printf("%c",so_fgetc(file));
+    printf("%c\n",so_fgetc(file));
     /*
 
     so_fputc((int)'y',file);
@@ -457,8 +457,6 @@ int main()
     printf("%s",buffer2);
     */
     so_fclose(file);
-
-    // in so_fseek trebuie sa modific so_feof daca s-a mutat cursorul inainte de final
 
     return 0;
 }

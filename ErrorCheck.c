@@ -115,4 +115,5 @@ int check_error_so_fread_fwrite(SO_FILE *stream,size_t size, size_t nmemb)
     {
         return THROW_SO_EOF;
     }
+    return MOVEON;
 }

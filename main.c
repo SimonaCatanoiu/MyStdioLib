@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include "so_stdio.h"
 #include "ErrorCheck.h"
 #include "utils.h"
@@ -58,6 +59,17 @@ int so_fclose(SO_FILE *stream)
     // Inchide ​fisierul primit ca parametru si
     // Elibereaza memoria folosita de structura ​SO_FILE​.
     // Intoarce 0 in caz de succes sau ​SO_EOF​ in caz de eroare.
+
+
+    //Inainte de a inchide fisierul, trebuie sa scriu ce am in buffer daca ultima operatie a fost de scriere
+    if(stream->last_operation==write_op)
+    {
+        int ret_value = so_fflush(stream);
+        if(ret_value<0)
+        {
+            return SO_EOF;
+        }
+    }
 
     int return_value = close(stream->handle);
     if (return_value < 0)
@@ -157,6 +169,7 @@ int so_fseek(SO_FILE *stream, long offset, int whence)
         return -1;
     }
     // retine pozitia cursorului in fisier si ultima operatie
+    stream->bool_is_eof=0;
     stream->file_offset = fseek_return;
     return 0;
 }
@@ -230,11 +243,15 @@ int so_fgetc(SO_FILE *stream)
         // verific daca a citit cu succes si daca a ajuns la finalul fisierului
         if (bytesReaded <= 0)
         {
-            if (bytesReaded == 0)
+            if(bytesReaded==0)
             {
                 stream->bool_is_eof = 1;
             }
-            stream->bool_is_error = 1;
+            else
+            {
+                printf("%s",strerror(errno));
+                stream->bool_is_error = 1;
+            }
             return SO_EOF;
         }
         // actualizez informatiile despre buffer odata ce l-am incarcat
@@ -292,6 +309,13 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
         return SO_EOF;
     }
 
+    //verifica daca se poate citi din fisier
+    if(is_read_flag_on(stream->openmode)==0)
+    {   
+        stream->bool_is_error=1;
+        return SO_EOF;
+    }
+
     for (int i = 0; i < nmemb; i++)
     {
         for (int j = 0; j < size; j++)
@@ -330,6 +354,14 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
         stream->bool_is_error = 1;
         return SO_EOF;
     }
+
+    //verifica daca poate scrie in fisier
+    if(is_write_flag_on(stream->openmode)==0)
+    {
+        stream->bool_is_error=1;
+        return SO_EOF;
+    }
+
     for (int i = 0; i < nmemb; i++)
     {
         for (int j = 0; j < size; j++)
@@ -353,7 +385,7 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
 
 int main()
 {
-    SO_FILE *file = so_fopen("maine", "w");
+
     /*
    printf("Descriptorul asociat fisierului este:%d\n", so_fileno(file));
 
@@ -393,17 +425,40 @@ int main()
      char buffer[2];
      so_fread(buffer, 1, 3, file);
  */
-
+    SO_FILE *file = so_fopen("maine", "w+");
     char buffer[40] = "1234567sad[;,.cxzc(*#((@Q)#8";
     int r = so_fwrite(buffer, 1, strlen(buffer), file);
+    printf("%d\n",r);
+    printf("Poz cursor:%ld\n",so_ftell(file));
     so_fflush(file);
-    printf("%d",r);
+    so_fseek(file,-10,SEEK_CUR);
+
+    printf("%c",so_fgetc(file));
+    /*
+
+    so_fputc((int)'y',file);
+    printf("Poz cursor:%ld\n",so_ftell(file));
+    so_fflush(file);
+    printf("%d\n",so_feof(file));
+    printf("%c\n",so_fgetc(file));
+    printf("%d\n",so_feof(file));
+    printf("Poz cursor:%ld\n",so_ftell(file));
+    so_fseek(file,0,SEEK_SET);
+    printf("%d\n",so_feof(file));
+    printf("%c",so_fgetc(file));
+
+*/
+
+
+    /*
+    char buffer2[5];
+    int readed = so_fread(buffer2,1,4,file);
+    buffer2[4]='\0';
+    printf("%s",buffer2);
+    */
     so_fclose(file);
 
-    // TO DO: TREBUIE ACTUALIZAT LASTOPERATION DUPA SCRIERE,CITIRE SI ALTE OPERATII
-    // ATENTIE: S-AR PUTEA CA ATUNCI CAND DAM CLOSE, SA TREBUIASCA SA APELAM FFLUSH INAINTE
-    // Atentie la ftell dupa ce am face un flush si dupa am mai da fputc si fgetc. S-ar putea sa nu arate corespunzator
     // in so_fseek trebuie sa modific so_feof daca s-a mutat cursorul inainte de final
-    // verificat conditii open_mode pt fwrite si fread
+
     return 0;
 }

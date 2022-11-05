@@ -123,7 +123,7 @@ int so_fflush(SO_FILE *stream)
         written_Bytes = written_Bytes + written_Bytes2;
     }
 
-    printf("FFlush trebuia sa scrie %d caractere. FFlush a scris %d caractere\n", stream->buffer_length, written_Bytes);
+    //printf("FFlush trebuia sa scrie %d caractere. FFlush a scris %d caractere\n", stream->buffer_length, written_Bytes);
 
     // dupa ce a scris in fisier, punem valorile din buffer din nou pe 0 si mutam offset-ul buffer-ului.Ultima operatie se va muta pe fflush_op
     // invalidarea bufferului

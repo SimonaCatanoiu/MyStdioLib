@@ -4,6 +4,8 @@
         "stdio.h": "c",
         "errorcheck.h": "c",
         "unistd.h": "c",
-        "fcntl.h": "c"
+        "fcntl.h": "c",
+        "*.so": "c",
+        "so_stdio.h": "c"
     }
 }

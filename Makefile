@@ -21,4 +21,3 @@ ErrorCheck.o: ErrorCheck.c ErrorCheck.h so_stdio.h
 
 clean:
 	rm -f *.o
-	rm -f libso_stdio.so

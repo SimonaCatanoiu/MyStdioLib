@@ -54,14 +54,17 @@ int check_error_so_fseek(SO_FILE* stream,long offset,int whence)
 {
     if(stream==NULL)
     {
+        printf("Fseek:null stream\n");
         return THROW_ERR;
     }
     if((whence!=SEEK_SET)&&(whence!=SEEK_END)&&(whence!=SEEK_CUR))
     {
+        printf("Fseek:whence nu e o valoare valida\n");
         return THROW_ERR;
     }
     if((whence==SEEK_SET) && (offset<0))
     {
+        printf("Fseek:offset negativ pentru SEEK_SET");
         return THROW_ERR;
     }
     return MOVEON;
@@ -71,6 +74,7 @@ int check_error_so_ftell(SO_FILE* stream)
 {
     if(stream==NULL)
     {
+        printf("Ftell: argument null\n");
         return THROW_ERR;
     }
     return MOVEON;
@@ -80,6 +84,7 @@ int check_error_so_feof(SO_FILE* stream)
 {
     if(stream==NULL)
     {
+        printf("Feof:null argument\n");
         return THROW_ERR;
     }
     return MOVEON;
@@ -89,6 +94,7 @@ int check_error_so_ferror(SO_FILE* stream)
 {
     if(stream==NULL)
     {
+        printf("Ferror: null argument\n");
         return THROW_ERR;
     }
     return MOVEON;

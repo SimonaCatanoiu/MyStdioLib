@@ -26,6 +26,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
     if (new_file == NULL)
     {
         printf("Nu s-a putut aloca un SO_FILE\n");
+        free(new_file);
         return NULL;
     }
     // initializeaza structura SO_FILE
@@ -57,6 +58,7 @@ SO_FILE *so_fopen(const char *pathname, const char *mode)
     {
         printf("Eroare la deschiderea fisierului\n");
         new_file->bool_is_error = 1;
+        free(new_file);
         return NULL;
     }
     return new_file;
@@ -73,6 +75,7 @@ int so_fclose(SO_FILE *stream)
         int ret_value = so_fflush(stream);
         if (ret_value < 0)
         {
+            free(stream);
             return SO_EOF;
         }
     }
@@ -82,6 +85,7 @@ int so_fclose(SO_FILE *stream)
     {
         printf("Eroare la inchiderea fisierului\n");
         stream->bool_is_error = 1;
+        free(stream);
         return SO_EOF;
     }
     free(stream);
@@ -583,3 +587,4 @@ int so_pclose(SO_FILE *stream)
     }
     return wstatus;
 }
+

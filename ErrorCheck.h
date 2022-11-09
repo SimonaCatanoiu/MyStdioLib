@@ -2,6 +2,7 @@
 #define SO_ERRORCHECK_H
 
 #include "so_stdio.h"
+#include "utils.h"
 
 #define THROW_NULL -1
 #define THROW_ERR -2

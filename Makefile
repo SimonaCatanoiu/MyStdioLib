@@ -16,7 +16,7 @@ libso_stdio.o: ​libso_stdio.c so_stdio.h ErrorCheck.h utils.h
 utils.o: utils.c utils.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-ErrorCheck.o: ErrorCheck.c ErrorCheck.h so_stdio.h
+ErrorCheck.o: ErrorCheck.c ErrorCheck.h so_stdio.h utils.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

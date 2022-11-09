@@ -571,7 +571,7 @@ int so_pclose(SO_FILE *stream)
     int ret_fclose = so_fclose(stream);
     if (ret_fclose < 0)
     {
-        printf("Popen: eroare la inchiderea stream-ului\n");
+        printf("Pclose: eroare la inchiderea stream-ului\n");
         return -1;
     }
     //asteapta terminarea procesului copil

@@ -343,7 +343,7 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
     {
         printf("Fread:argumente invalide\n");
         stream->bool_is_error = 1;
-        return SO_EOF;
+        return 0;
     }
 
     // verifica daca se poate citi din fisier
@@ -351,7 +351,7 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
     {
         printf("Fread:fara permisiune de citire\n");
         stream->bool_is_error = 1;
-        return SO_EOF;
+        return 0;
     }
 
     for (int i = 0; i < nmemb; i++)
@@ -369,7 +369,7 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
             { // daca a dat eroare la fgetc, intoarce SO_EOF
                 if (ret_char < 0 && stream->bool_is_error == 1)
                 {
-                    return SO_EOF;
+                    return 0;
                 }
             }
             // pune byte in ptr
@@ -396,7 +396,7 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
     {
         printf("Fwrite:argumente invalide\n");
         stream->bool_is_error = 1;
-        return SO_EOF;
+        return 0;
     }
 
     // verifica daca poate scrie in fisier
@@ -404,7 +404,7 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
     {
         printf("Fwrite: fara permisiune de scriere\n");
         stream->bool_is_error = 1;
-        return SO_EOF;
+        return 0;
     }
 
     for (int i = 0; i < nmemb; i++)
@@ -419,7 +419,7 @@ size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
             // verificam daca a intampinat vreo eroare
             if (ret_value < 0 && stream->bool_is_error == 1)
             {
-                return SO_EOF;
+                return 0;
             }
         }
         //fiecare element e de dimensiune size
